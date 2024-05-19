@@ -545,6 +545,10 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 			pokemonToDraw.owner = selectedPlayer
 			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN].setPokemonToDraw(pokemonToDraw, opposingPokemon)
 			if opposingPokemon ~= nil then
+				-- Could also start to hack on the opponent screen
+				if selectedPlayer == self.SELECTED_PLAYERS.PLAYER then
+					opposingPokemon.owner = self.SELECTED_PLAYERS.ENEMY
+				end
 				self.UI_SCREEN_OBJECTS[self.UI_SCREENS.OPPONENT_SCREEN].setPokemonToDraw(opposingPokemon,
 					pokemonToDraw)
 			end
