@@ -2,7 +2,7 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 	local self = {}
 	local FrameCounter = dofile(Paths.FOLDERS.DATA_FOLDER .. "/FrameCounter.lua")
 	local MainScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/MainScreen.lua")
-	local OpponentScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/OpponentScreen.lua")
+
 	local MainOptionsScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/MainOptionsScreen.lua")
 	local BattleOptionsScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/BattleOptionsScreen.lua")
 	local AppearanceOptionsScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/AppearanceOptionsScreen.lua")
@@ -28,6 +28,11 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 	local CoverageCalcScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/CoverageCalcScreen.lua")
 	local TimerScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/TimerScreen.lua")
 
+	-- Additional screens
+	local OpponentScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/OpponentScreen.lua")
+	local MiniCoverageCalcScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/MiniCoverageCalcScreen.lua")
+
+	-- Others
 	local INI = dofile(Paths.FOLDERS.DATA_FOLDER .. "/Inifile.lua")
 	local PokemonDataReader = dofile(Paths.FOLDERS.DATA_FOLDER .. "/PokemonDataReader.lua")
 	local JoypadEventListener = dofile(Paths.FOLDERS.UI_BASE_CLASSES .. "/JoypadEventListener.lua")
@@ -71,6 +76,7 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 	local inLockedView = false
 	local statusItems = nil
 	local playerPokemon = nil
+	local previousMoveIDs = nil
 	local enemyPokemon = nil
 	local activeColorPicker = nil
 	local canDraw = true
@@ -141,8 +147,10 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 		local currentPokemonInitialization = {
 			[self.UI_SCREENS.EVO_DATA_SCREEN] = true
 		}
+
 		local currentPlayerMovesInitialization = {
-			[self.UI_SCREENS.COVERAGE_CALC_SCREEN] = true
+			[self.UI_SCREENS.COVERAGE_CALC_SCREEN] = true,
+			[self.UI_SCREENS.MINI_COVERAGE_SCREEN] = true
 		}
 		if blankInitialization[screen] then
 			self.UI_SCREEN_OBJECTS[screen].initialize()
@@ -260,7 +268,8 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 		EVO_DATA_SCREEN = 22,
 		COVERAGE_CALC_SCREEN = 23,
 		TIMER_SCREEN = 24,
-		OPPONENT_SCREEN = 25
+		OPPONENT_SCREEN = 25,
+		MINI_COVERAGE_SCREEN = 26
 	}
 
 	self.UI_SCREEN_OBJECTS = {
@@ -289,7 +298,8 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 		[self.UI_SCREENS.EVO_DATA_SCREEN] = EvoDataScreen(settings, tracker, self),
 		[self.UI_SCREENS.COVERAGE_CALC_SCREEN] = CoverageCalcScreen(settings, tracker, self),
 		[self.UI_SCREENS.TIMER_SCREEN] = TimerScreen(settings, tracker, self),
-		[self.UI_SCREENS.OPPONENT_SCREEN] = OpponentScreen(settings, tracker, self)
+		[self.UI_SCREENS.OPPONENT_SCREEN] = OpponentScreen(settings, tracker, self),
+		[self.UI_SCREENS.MINI_COVERAGE_SCREEN] = MiniCoverageCalcScreen(settings, tracker, self)
 	}
 
 	tourneyTracker =
@@ -493,11 +503,27 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 		end
 	end
 
+	local function playerPokemonMoveIdsChanged(newMoveIDs)
+		if previousMoveIDs == nil or #previousMoveIDs < 4 then
+			return true
+		end
+		for i, v in ipairs(newMoveIDs) do
+			if v ~= previousMoveIDs[i] then
+				return true
+			end
+		end
+
+		return false
+	end
 	local function updatePlayerPokemonData()
 		local pokemonToCheck = getPokemonData(self.SELECTED_PLAYERS.PLAYER)
 		if MiscUtils.validPokemonData(pokemonToCheck) then
 			local previousID = playerPokemon.pokemonID
 			playerPokemon = pokemonToCheck
+			if playerPokemonMoveIdsChanged(playerPokemon.moveIDs) then
+				previousMoveIDs = playerPokemon.moveIDs;
+				self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MINI_COVERAGE_SCREEN].initialize(playerPokemon.moveIDs)
+			end
 			self.checkForAlternateForm(playerPokemon)
 			if previousID == 0 then
 				tracker.setFirstPokemon(playerPokemon)
@@ -533,6 +559,7 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 		local pokemonForDrawing = getPokemonToDraw()
 		local pokemonToDraw = pokemonForDrawing.pokemonToDraw
 		local opposingPokemon = pokemonForDrawing.opposingPokemon
+
 		if pokemonOverride ~= nil then
 			pokemonToDraw = pokemonOverride
 			opposingPokemon = nil
@@ -853,6 +880,7 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 		then
 			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.OPPONENT_SCREEN].show()
 		end
+		self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MINI_COVERAGE_SCREEN].show()
 		local last = {
 			[self.UI_SCREENS.RANDOM_BALL_SCREEN] = true,
 			[self.UI_SCREENS.TITLE_SCREEN] = true
@@ -1027,6 +1055,7 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 		self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN].setRunEventListeners(runMainScreenEvents)
 		if runEvents then
 			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.TOURNEY_TRACKER_SCREEN].runEventListeners()
+			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MINI_COVERAGE_SCREEN].runEventListeners()
 			for _, eventListener in pairs(eventListeners) do
 				eventListener.listen()
 			end
