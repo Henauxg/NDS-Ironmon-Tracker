@@ -2,7 +2,7 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 	local self = {}
 	local FrameCounter = dofile(Paths.FOLDERS.DATA_FOLDER .. "/FrameCounter.lua")
 	local MainScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/MainScreen.lua")
-	local MainScreenBottom = dofile(Paths.FOLDERS.UI_FOLDER .. "/MainScreenCopy.lua")
+	local OpponentScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/OpponentScreen.lua")
 	local MainOptionsScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/MainOptionsScreen.lua")
 	local BattleOptionsScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/BattleOptionsScreen.lua")
 	local AppearanceOptionsScreen = dofile(Paths.FOLDERS.UI_FOLDER .. "/AppearanceOptionsScreen.lua")
@@ -260,7 +260,7 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 		EVO_DATA_SCREEN = 22,
 		COVERAGE_CALC_SCREEN = 23,
 		TIMER_SCREEN = 24,
-		MAIN_SCREEN_BOTTOM = 25
+		OPPONENT_SCREEN = 25
 	}
 
 	self.UI_SCREEN_OBJECTS = {
@@ -289,7 +289,7 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 		[self.UI_SCREENS.EVO_DATA_SCREEN] = EvoDataScreen(settings, tracker, self),
 		[self.UI_SCREENS.COVERAGE_CALC_SCREEN] = CoverageCalcScreen(settings, tracker, self),
 		[self.UI_SCREENS.TIMER_SCREEN] = TimerScreen(settings, tracker, self),
-		[self.UI_SCREENS.MAIN_SCREEN_BOTTOM] = MainScreenBottom(settings, tracker, self)
+		[self.UI_SCREENS.OPPONENT_SCREEN] = OpponentScreen(settings, tracker, self)
 	}
 
 	tourneyTracker =
@@ -545,13 +545,8 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 			pokemonToDraw.owner = selectedPlayer
 			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN].setPokemonToDraw(pokemonToDraw, opposingPokemon)
 			if opposingPokemon ~= nil then
-				opposingPokemon.owner = self.SELECTED_PLAYERS.ENEMY
-				pokemonToDraw.owner = self.SELECTED_PLAYERS.PLAYER
-				self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN_BOTTOM].setPokemonToDraw(opposingPokemon,
+				self.UI_SCREEN_OBJECTS[self.UI_SCREENS.OPPONENT_SCREEN].setPokemonToDraw(opposingPokemon,
 					pokemonToDraw)
-			else
-				self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN_BOTTOM].setPokemonToDraw(pokemonToDraw,
-					opposingPokemon)
 			end
 		end
 	end
@@ -568,7 +563,7 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 		if gameInfo.NAME == "Pokemon HeartGold" or gameInfo.NAME == "Pokemon SoulSilver" then
 			local leagueEvent = Memory.read_u8(memoryAddresses.leagueBeaten)
 			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN].setLanceDefeated(leagueEvent >= 3)
-			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN_BOTTOM].setLanceDefeated(leagueEvent >= 3)
+			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.OPPONENT_SCREEN].setLanceDefeated(leagueEvent >= 3)
 		end
 	end
 
@@ -605,7 +600,6 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 				doneWithTitleScreen = true
 				if not editingFavorites then
 					self.openScreen(self.UI_SCREENS.MAIN_SCREEN)
-					self.addScreen(self.UI_SCREENS.MAIN_SCREEN_BOTTOM)
 					self.addScreen(self.UI_SCREENS.TITLE_SCREEN)
 					currentScreens[self.UI_SCREENS.TITLE_SCREEN].setTopVisibility(false)
 				end
@@ -648,7 +642,7 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 			-- TODO Here ?
 			self.setCurrentScreens({ self.UI_SCREENS.MAIN_SCREEN })
 			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN].setRandomBallPickerActive(false)
-			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN_BOTTOM].setRandomBallPickerActive(false)
+			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.OPPONENT_SCREEN].setRandomBallPickerActive(false)
 		end
 		if playerPokemon ~= nil and battleHandler:getPlayerSlotIndex() == 1 then
 			pokemonThemeManager.update(playerPokemon.pokemonID)
@@ -675,12 +669,12 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 
 	function self.disableMoveEffectiveness()
 		self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN].setMoveEffectiveness(false)
-		self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN_BOTTOM].setMoveEffectiveness(false)
+		self.UI_SCREEN_OBJECTS[self.UI_SCREENS.OPPONENT_SCREEN].setMoveEffectiveness(false)
 	end
 
 	local function onBattleDelayFinished()
 		self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN].setMoveEffectiveness(true)
-		self.UI_SCREEN_OBJECTS[self.UI_SCREENS.MAIN_SCREEN_BOTTOM].setMoveEffectiveness(true)
+		self.UI_SCREEN_OBJECTS[self.UI_SCREENS.OPPONENT_SCREEN].setMoveEffectiveness(true)
 		frameCounters["disableMoveEffectiveness"] = nil
 	end
 
@@ -851,6 +845,10 @@ local function Program(initialTracker, initialMemoryAddresses, initialGameInfo, 
 			client.SetGameExtraPadding(0, 0, Graphics.SIZES.MAIN_SCREEN_PADDING, 0)
 		end
 		self.UI_SCREEN_OBJECTS[self.UI_SCREENS.TOURNEY_TRACKER_SCREEN].show()
+		if battleHandler:isInBattle() and battleHandler:isAllowedToSwap()
+		then
+			self.UI_SCREEN_OBJECTS[self.UI_SCREENS.OPPONENT_SCREEN].show()
+		end
 		local last = {
 			[self.UI_SCREENS.RANDOM_BALL_SCREEN] = true,
 			[self.UI_SCREENS.TITLE_SCREEN] = true
